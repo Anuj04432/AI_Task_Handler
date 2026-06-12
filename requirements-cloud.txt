@@ -1,0 +1,10 @@
+# requirements-cloud.txt
+# Use this on Streamlit Cloud (no microphone/speaker access).
+# Voice features degrade gracefully to text-only mode.
+
+streamlit>=1.35.0
+bcrypt>=4.1.2
+dateparser>=1.2.0
+requests>=2.31.0
+APScheduler>=3.10.4
+# pyttsx3 and SpeechRecognition omitted — no audio in cloud env

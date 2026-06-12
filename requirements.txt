@@ -1,0 +1,29 @@
+# ╔══════════════════════════════════════════════════════════╗
+# ║           AI To-Do System — requirements.txt             ║
+# ║  Install with:  pip install -r requirements.txt          ║
+# ╚══════════════════════════════════════════════════════════╝
+
+# ── Core UI ──────────────────────────────────────────────────
+streamlit>=1.35.0
+
+# ── Authentication / Security ────────────────────────────────
+bcrypt>=4.1.2
+
+# ── AI / NLU ────────────────────────────────────────────────
+dateparser>=1.2.0        # multilingual date/time parsing (offline)
+requests>=2.31.0         # for Ollama HTTP calls (optional)
+
+# ── Voice ───────────────────────────────────────────────────
+SpeechRecognition>=3.10.1    # STT (uses Google Web Speech API — free)
+pyttsx3>=2.90                # TTS (fully offline, cross-platform)
+PyAudio>=0.2.14              # microphone access (required by SpeechRecognition)
+
+# ── Scheduler ───────────────────────────────────────────────
+APScheduler>=3.10.4
+
+# ── Optional extras ─────────────────────────────────────────
+# streamlit-js-eval>=0.1.7  # browser notifications (uncomment if needed)
+# vosk>=0.3.45              # fully offline STT fallback (requires model download)
+
+# ── Dev / Testing ───────────────────────────────────────────
+pytest>=8.0.0
