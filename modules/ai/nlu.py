@@ -3,16 +3,19 @@ ai/nlu.py
 =========
 Natural Language Understanding module.
 
-Strategy (offline-first, no paid APIs):
-  1. Rule-based intent + entity extraction using regex + dateparser.
-     Works 100% offline, no model download needed, covers most real-world inputs.
-  2. Optional Ollama backend (llama3 / mistral) for complex / multilingual queries.
-     Falls back to rule-based if Ollama is unavailable.
+Strategy (best result, with offline fallback):
+  1. Gemini API (free tier via Google AI Studio, new `google-genai` SDK) —
+     best multilingual/Hinglish understanding. Requires GEMINI_API_KEY env var.
+     Needs internet.
+  2. Ollama backend (local LLM: phi3, gemma:2b, qwen2:1.5b, etc.) — offline,
+     used if Gemini key is missing or the call fails.
+  3. Rule-based regex + dateparser — always available, 100% offline fallback.
 
 Intents: add_task | delete_task | complete_task | show_tasks | update_task | unknown
 Entities: task_name (str), task_id (int), due_datetime (ISO-8601 str)
 """
 
+import os
 import re
 import json
 import logging
@@ -30,23 +33,55 @@ try:
 except ImportError:
     REQUESTS_AVAILABLE = False
 
+try:
+    from google import genai as _genai
+    GEMINI_SDK_AVAILABLE = True
+except ImportError:
+    GEMINI_SDK_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
+
+# ─── Gemini config ────────────────────────────────────────────────────────────
+# Set this via environment variable, e.g.:
+#   Windows (cmd):        set GEMINI_API_KEY=your_key_here
+#   Windows (PowerShell): $env:GEMINI_API_KEY="your_key_here"
+#   macOS/Linux:          export GEMINI_API_KEY=your_key_here
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_MODEL   = "gemini-2.0-flash"   # fast + free tier
+
+# Lazily-created client (avoids error at import time if key is missing)
+_gemini_client = None
+
+
+def _get_gemini_client():
+    global _gemini_client
+    if _gemini_client is None and GEMINI_SDK_AVAILABLE and GEMINI_API_KEY:
+        try:
+            _gemini_client = _genai.Client(api_key=GEMINI_API_KEY)
+        except Exception as exc:
+            logger.debug("Failed to create Gemini client: %s", exc)
+            _gemini_client = False  # mark as failed, don't retry every call
+    return _gemini_client or None
+
 
 # ─── Ollama config ────────────────────────────────────────────────────────────
 OLLAMA_URL   = "http://localhost:11434/api/generate"
-OLLAMA_MODEL = "llama3"          # change to mistral, phi3, etc.
+OLLAMA_MODEL = "qwen2:1.5b"          # change to phi3, gemma:2b, etc.
 
-# ─── Intent keyword maps (multilingual basics) ────────────────────────────────
+# ─── Intent keyword maps (multilingual basics + Hinglish) ─────────────────────
 ADD_KEYWORDS      = ["add", "create", "new", "remind", "schedule", "agregar",
-                     "ajouter", "hinzufügen", "añadir", "추가", "追加", "जोड़"]
+                     "ajouter", "hinzufügen", "añadir", "추가", "追加", "जोड़",
+                     "jana hai", "karna hai", "yaad", "kaam"]
 DELETE_KEYWORDS   = ["delete", "remove", "cancel", "eliminar", "supprimer",
-                     "löschen", "삭제", "削除", "हटाएं"]
+                     "löschen", "삭제", "削除", "हटाएं", "hatao", "hata do"]
 COMPLETE_KEYWORDS = ["complete", "done", "finish", "completar", "terminer",
-                     "abschließen", "완료", "完了", "पूरा"]
+                     "abschließen", "완료", "完了", "पूरा", "ho gaya", "kar diya"]
 SHOW_KEYWORDS     = ["show", "list", "display", "view", "tasks", "what",
-                     "mostrar", "afficher", "anzeigen", "보여", "表示", "दिखाओ"]
+                     "mostrar", "afficher", "anzeigen", "보여", "表示", "दिखाओ",
+                     "dikhao", "kya hai"]
 UPDATE_KEYWORDS   = ["update", "edit", "change", "rename", "reschedule",
-                     "actualizar", "modifier", "bearbeiten", "업데이트"]
+                     "actualizar", "modifier", "bearbeiten", "업데이트",
+                     "badlo", "badal do"]
 
 
 def _detect_intent_rule(text: str) -> str:
@@ -124,18 +159,46 @@ def _extract_task_name(text: str, intent: str) -> str:
     return cleaned if cleaned else text.strip()
 
 
-# ─── Ollama fallback ──────────────────────────────────────────────────────────
+# ─── Shared system prompt for LLM-based parsing ───────────────────────────────
 
-_OLLAMA_SYSTEM = """You are an intent and entity extractor for a to-do app.
-Given a user message in ANY language, respond ONLY with a JSON object:
+_LLM_SYSTEM = """You are an intent and entity extractor for a to-do app.
+Given a user message in ANY language (including Hindi, Hinglish, or code-mixed text),
+respond ONLY with a JSON object:
 {
   "intent": "add_task|delete_task|complete_task|show_tasks|update_task|unknown",
-  "task_name": "<name or null>",
+  "task_name": "<short task description in English or original language, or null>",
   "task_id": <integer or null>,
-  "due_datetime": "<ISO-8601 datetime or null>"
+  "due_datetime": "<ISO-8601 datetime, e.g. 2025-06-13T09:00:00, or null>"
 }
+Today's date/time is """ + datetime.now().isoformat(timespec="seconds") + """.
 No explanation. No markdown. Only JSON."""
 
+
+# ─── Gemini (free tier API, new google-genai SDK) ─────────────────────────────
+
+def _gemini_parse(text: str) -> dict | None:
+    """Call Gemini API for intent/entity extraction. Returns dict or None."""
+    client = _get_gemini_client()
+    if client is None:
+        return None
+    try:
+        response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=f"User message: {text}",
+            config={
+                "system_instruction": _LLM_SYSTEM,
+                "response_mime_type": "application/json",
+            },
+        )
+        raw = (response.text or "").strip()
+        raw = re.sub(r"```(?:json)?|```", "", raw).strip()
+        return json.loads(raw)
+    except Exception as exc:
+        logger.debug("Gemini unavailable (%s), trying next fallback.", exc)
+        return None
+
+
+# ─── Ollama (local LLM fallback) ───────────────────────────────────────────────
 
 def _ollama_parse(text: str) -> dict | None:
     """Call local Ollama model. Returns parsed dict or None on failure."""
@@ -145,7 +208,7 @@ def _ollama_parse(text: str) -> dict | None:
         payload = {
             "model": OLLAMA_MODEL,
             "prompt": f"User message: {text}",
-            "system": _OLLAMA_SYSTEM,
+            "system": _LLM_SYSTEM,
             "stream": False,
         }
         resp = _requests.post(OLLAMA_URL, json=payload, timeout=10)
@@ -161,6 +224,12 @@ def _ollama_parse(text: str) -> dict | None:
 
 # ─── Public API ───────────────────────────────────────────────────────────────
 
+_VALID_INTENTS = (
+    "add_task", "delete_task", "complete_task",
+    "show_tasks", "update_task", "unknown"
+)
+
+
 def parse_command(text: str, use_ollama: bool = True) -> dict:
     """
     Parse a natural-language command and return a structured dict:
@@ -171,21 +240,31 @@ def parse_command(text: str, use_ollama: bool = True) -> dict:
         "due_datetime":  str | None,   # ISO-8601
         "raw":           str,
     }
+
+    Resolution order:
+      1. Gemini (if GEMINI_API_KEY is set)
+      2. Ollama (if running locally and use_ollama=True)
+      3. Rule-based (always available, offline)
     """
     if not text or not text.strip():
         return {"intent": "unknown", "task_name": None,
                 "task_id": None, "due_datetime": None, "raw": text}
 
-    # Try Ollama first for richer understanding
-    if use_ollama:
-        result = _ollama_parse(text)
-        if result and result.get("intent") in (
-            "add_task","delete_task","complete_task","show_tasks","update_task","unknown"
-        ):
-            result["raw"] = text
-            return result
+    # 1. Try Gemini first (best multilingual/Hinglish quality)
+    result = _gemini_parse(text)
 
-    # Fall back to rule-based
+    # 2. Fall back to Ollama
+    if result is None and use_ollama:
+        result = _ollama_parse(text)
+
+    if result and result.get("intent") in _VALID_INTENTS:
+        result.setdefault("task_name", None)
+        result.setdefault("task_id", None)
+        result.setdefault("due_datetime", None)
+        result["raw"] = text
+        return result
+
+    # 3. Fall back to rule-based
     intent      = _detect_intent_rule(text)
     task_id     = _extract_task_id(text)
     due_dt      = _extract_due_datetime(text)
