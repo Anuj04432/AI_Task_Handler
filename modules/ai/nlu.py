@@ -258,14 +258,14 @@ def _extract_task_name(text: str, intent: str) -> str:
 # ─── Shared system prompt for LLM-based parsing ───────────────────────────────
 
 _LLM_SYSTEM = """You are an intent and entity extractor for a to-do app.
-Given a user message in ANY language (including Hindi, Hinglish, or code-mixed text),
-respond ONLY with a JSON object:
+Given a user message in ANY language, including English, Hindi, Hinglish, Marathi, Kannada, Telugu, Tamil, Malayalam, Gujarati, Punjabi, Bengali, Odia, Assamese, Konkani, or code-mixed text written in either native scripts or English transliteration, respond ONLY with a JSON object:
 {
   "intent": "add_task|delete_task|complete_task|show_tasks|update_task|unknown",
   "task_name": "<short task description in English or original language, or null>",
   "task_id": <integer or null>,
   "due_datetime": "<ISO-8601 datetime, e.g. 2025-06-13T09:00:00, or null>"
 }
+Recognize task-related phrases, reminders, dates, times, and natural language expressions in all supported Indian languages and their English transliterations.
 Today's date/time is """ + datetime.now().isoformat(timespec="seconds") + """.
 No explanation. No markdown. Only JSON."""
 
