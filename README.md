@@ -68,8 +68,8 @@ ai_todo/
 
 ### 2. Clone the repo
 ```bash
-git clone https://github.com/YOUR_USERNAME/ai-todo.git
-cd ai-todo
+git clone https://github.com/Anuj04432/AI_Task_Handler.git
+cd AI_Task_Handler
 ```
 
 ### 3. Create a virtual environment
@@ -203,6 +203,8 @@ Every 60 seconds (background thread):
 ---
 
 ## 🔐 Security Notes
+
+
 
 - Passwords are hashed with **bcrypt** (work factor 12) — never stored in plaintext.
 - Session tokens are 64-character cryptographically random hex strings.
