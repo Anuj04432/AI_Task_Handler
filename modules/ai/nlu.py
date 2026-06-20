@@ -68,19 +68,116 @@ OLLAMA_URL   = "http://localhost:11434/api/generate"
 OLLAMA_MODEL = "qwen2:1.5b"          # change to phi3, gemma:2b, etc.
 
 # ─── Intent keyword maps (multilingual basics + Hinglish) ─────────────────────
-ADD_KEYWORDS      = ["add", "create", "new", "remind", "schedule", "agregar",
-                     "ajouter", "hinzufügen", "añadir", "추가", "追加", "जोड़",
-                     "jana hai", "karna hai", "yaad", "kaam"]
-DELETE_KEYWORDS   = ["delete", "remove", "cancel", "eliminar", "supprimer",
-                     "löschen", "삭제", "削除", "हटाएं", "hatao", "hata do"]
-COMPLETE_KEYWORDS = ["complete", "done", "finish", "completar", "terminer",
-                     "abschließen", "완료", "完了", "पूरा", "ho gaya", "kar diya"]
-SHOW_KEYWORDS     = ["show", "list", "display", "view", "tasks", "what",
-                     "mostrar", "afficher", "anzeigen", "보여", "表示", "दिखाओ",
-                     "dikhao", "kya hai"]
-UPDATE_KEYWORDS   = ["update", "edit", "change", "rename", "reschedule",
-                     "actualizar", "modifier", "bearbeiten", "업데이트",
-                     "badlo", "badal do"]
+ADD_KEYWORDS = [
+    # Hindi / Hinglish
+    "jana hai", "karna hai", "yaad", "yaad dilana",
+    "yaad rakhna", "kaam", "kaam hai", "note karo",
+    "save karo", "add karo", "task banao",
+    "reminder lagao", "alarm lagao", "mujhe yaad dilana",
+
+    # Marathi
+    "aathavan", "aathavan karun de", "lakshat thev",
+    "karaycha aahe", "kaam aahe", "nond kar",
+    "visru nako",
+
+    # Kannada
+    "nenapu", "nenapisu", "madbeku", "madabeku",
+    "kelasa", "serisu", "haaku", "naale",
+    "mareyabeda", "reminder haaku",
+
+    # Telugu
+    "gurtu", "gurtu cheyyi", "gurthunchuko",
+    "cheyyali", "pani", "jodinchu",
+    "repu", "marchipoku", "reminder pettu",
+
+    # Tamil
+    "nyabagam", "nyabagam paduthu", "ninaivu",
+    "ninaivootu", "seiyanum", "velai",
+    "serka", "naalai", "marakkathe",
+    "reminder podu",
+
+    # Malayalam
+    "orma", "ormippikku", "cheyyanam",
+    "joli", "cherkkuka", "nale",
+    "marakkaruthu", "reminder vekku",
+
+    # Gujarati
+    "yaad karavjo", "yaad rakhjo",
+    "karvanu che", "kaam che",
+    "nondh karo", "umero",
+
+    # Punjabi
+    "yaad kara de", "yaad rakh",
+    "karna hai", "kam hai",
+    "note kar", "reminder la de",
+
+    # Bengali
+    "mone rakho", "mone koriye dao",
+    "kaj ache", "korte hobe",
+    "jog koro",
+
+    # Odia
+    "mane rakha", "mane paka",
+    "karibaku achhi", "kaam achhi",
+    "joda"
+]
+
+DELETE_KEYWORDS = [
+    "hatao", "hata do", "mita do", "delete karo",
+    "kadhun taka", "hatva",
+    "tegedu haaku", "alisu",
+    "teesey", "tholaginchu",
+    "neekku", "azhithu vidu",
+    "ozhivakku", "kalayuka",
+    "dur karo", "kadhi nakho",
+    "hata de", "mita de",
+    "bad diye dao", "soriye dao",
+    "jhada"
+]
+
+COMPLETE_KEYWORDS = [
+    "ho gaya", "kar diya", "khatam",
+    "poora ho gaya", "complete ho gaya",
+    "zala", "purna zala",
+    "aaytu", "mugitu",
+    "ayipoyindi", "poorthi ayindi",
+    "mudinju", "mudinjiduchu",
+    "kazhinju", "poorthiyayi",
+    "thai gayu", "purn thai gayu",
+    "ho gya", "muk gaya",
+    "hoye geche",
+    "sari gala"
+]
+
+SHOW_KEYWORDS = [
+    "dikhao", "kya hai", "batao",
+    "mere task", "mere kaam",
+    "dakhav", "yadi dakhav",
+    "torisu", "list torisu",
+    "chuupinchu", "list chupinchu",
+    "kaatu", "list kaatu",
+    "kaanikku", "list kaanikku",
+    "batavo", "yaadi batavo",
+    "dikha de", "list dikha",
+    "dekhao", "kaj dekhao",
+    "dekha", "talika dekha"
+]
+
+UPDATE_KEYWORDS = [
+    "badlo", "badal do", "sudharo",
+    "update karo", "naam badlo",
+    "time badlo",
+
+    "badla", "sudhar",
+    "badalisi", "hesaru badalisi",
+    "marchu", "peru marchu",
+    "maatru", "peyar maatru",
+    "maattuka", "per maattuka",
+    "naam badlo",
+    "badal de", "naam badal de",
+    "poriborton koro",
+    "badala"
+]
 
 
 def _detect_intent_rule(text: str) -> str:
