@@ -46,8 +46,8 @@ logger = logging.getLogger(__name__)
 #   Windows (cmd):        set GEMINI_API_KEY=your_key_here
 #   Windows (PowerShell): $env:GEMINI_API_KEY="your_key_here"
 #   macOS/Linux:          export GEMINI_API_KEY=your_key_here
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-GEMINI_MODEL   = "gemini-2.5-flash-lite"   # fast + free tier, confirmed working
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+GEMINI_MODEL   = "gemini-3.5-flash"   # fast + free tier, confirmed working
 # Lazily-created client (avoids error at import time if key is missing)
 _gemini_client = None
 
